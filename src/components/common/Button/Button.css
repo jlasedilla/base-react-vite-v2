@@ -1,0 +1,11 @@
+.button {
+    @apply py-2 px-4 rounded-none bg-blue-400 hover:bg-opacity-50;
+}
+
+.button.rounded {
+    @apply rounded-lg;
+}
+
+.button.pill {
+    @apply rounded-full;
+}
