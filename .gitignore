@@ -10,7 +10,9 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-test
+tests
+cypress/screenshots
+cypress/videos
 *.local
 
 # Editor directories and files
