@@ -11,7 +11,7 @@
         "format": "prettier --write src/**/*.{js,jsx,ts,tsx,css,json}",
         "test": "vitest",
         "coverage": "vitest run --coverage",
-        "cypress:open": "cypress open",
+        "cypress:open": "cypress open --config-file cypress/configs/dev.config.ts",
         "cypress:run-dev": "cypress run --config-file cypress/configs/dev.config.ts",
         "cypress:run-stage": "cypress run --config-file cypress/configs/stage.config.ts",
         "cypress:run-c=dev": "cypress run --component --config-file cypress/configs/dev.config.ts",
