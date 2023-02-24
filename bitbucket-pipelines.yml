@@ -1,0 +1,228 @@
+# prettier-ignore
+# Bitbucket deployment
+
+image: node:19
+
+# Workflow Configuration
+
+pipelines:
+  default:
+    - step:
+        name: Install
+        caches:
+          - node
+        script:
+          - npm install
+    - parallel:
+      - step:
+          name: Test
+          caches:
+            - node
+          script:
+            - npm run coverage
+      - step:
+          name: Static check
+          script:
+            - npm run lint
+          caches:
+            - node
+    - step:
+        name: Build
+        caches:
+          - node
+        script:
+          - npm run build:dev
+        artifacts:
+          - dist/**
+    - step:
+        name: Deploy to dev
+        deployment: Dev
+        trigger: manual
+        clone:
+          enabled: false
+        script:
+          - pipe: atlassian/aws-s3-deploy:1.1.0
+            variables:
+              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+              AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+              S3_BUCKET: 'integ-platform-ui-dev'
+              LOCAL_PATH: 'dist'
+          - pipe: atlassian/aws-cloudfront-invalidate:0.6.0
+            variables:
+              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+              AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+              DISTRIBUTION_ID: 'DEVELOPMENT_DISTRIBUTION_ID'
+  branches:
+    feature/story:
+      - step:
+          name: Build code for storybook
+          caches:
+            - node
+          script:
+            - npm install
+            - npm run build-storybook
+          artifacts:
+            - storybook-static/**
+      - step:
+          name: Deploy to story
+          deployment: Story
+          trigger: automatic
+          clone:
+            enabled: false
+          script:
+            - pipe: atlassian/aws-s3-deploy:1.1.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                S3_BUCKET: 'integ-platform-ui-storybook-dev'
+                LOCAL_PATH: 'storybook-static'
+    release/stage:
+      - parallel:
+        - step:
+            name: Build code for staging
+            caches:
+              - node
+            script:
+              - npm install
+              - npm run build:staging
+            artifacts:
+              - dist/**
+        - step:
+            name: Security scan
+            script:
+              # Run a security scan for sensitive data.
+              # See more security tools at https://bitbucket.org/product/features/pipelines/integrations?&category=security
+              - pipe: atlassian/git-secrets-scan:0.5.1
+              ## Can add snyk dependencies scan here
+              ## Disabled for now
+              # - pipe: snyk/snyk-scan:0.5.3
+              #   variables:
+              #     SNYK_TOKEN: $SNYK_TOKEN
+              #     LANGUAGE: "npm" 
+      - step:
+          name: Deploy to staging
+          deployment: Staging
+          trigger: automatic
+          clone:
+            enabled: false
+          script:
+            - pipe: atlassian/aws-s3-deploy:1.1.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                S3_BUCKET: 'integ-platform-ui-staging'
+                LOCAL_PATH: 'dist'
+            - pipe: atlassian/aws-cloudfront-invalidate:0.6.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                DISTRIBUTION_ID: 'E3Q86CE5Z8PTB9'
+    release/testing:
+      - parallel:
+        - step:
+            name: Build code for test
+            caches:
+              - node
+              - cypress
+            script:
+              - npm ci
+              - npm run build:test
+            artifacts:
+              - dist/**
+        - step:
+            name: Security Scan
+            script:
+              - pipe: atlassian/git-secrets-scan:0.5.1
+      - step:
+          name: Deploy to test
+          deployment: Test
+          trigger: automatic
+          clone:
+            enabled: false
+          script:
+            - pipe: atlassian/aws-s3-deploy:1.1.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                S3_BUCKET: 'integ-platform-ui-test'
+                LOCAL_PATH: 'dist'
+            # TODO: Set deployment variable and actual test distribution id
+            - pipe: atlassian/aws-cloudfront-invalidate:0.6.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                DISTRIBUTION_ID: 'TEST_DISTRIBUTION_ID'
+      - step:
+          name: E2E test
+          image: cypress/base
+          caches:
+            - node
+            - cypress
+          script:
+            - if [ -d "cypress/results" ]; then rm -Rf cypress/results; fi
+            - npm run cypress:run-dev
+            - npx mochawesome-merge 'cypress/results/*.json' > mochawesome.json
+            - npx marge mochawesome.json
+            - if [ -f "mochawesome.json" ]; then rm mochawesome.json; fi
+          artifacts:
+            - mochawesome-report/**
+    master:
+      - step:
+          name: Install packages
+          caches:
+            - node
+          script:
+            - npm install
+      - parallel:
+        - step:
+            name: Retest code
+            caches:
+              - node
+            script:
+              - npm run coverage
+              - npm run lint
+        - step:
+            name: Build code for production
+            caches:
+              - node
+            script:
+              - npm run build
+            artifacts:
+              - build/**
+        - step:
+              name: Security Scan
+              script:
+                - pipe: atlassian/git-secrets-scan:0.5.1
+      - step:
+          name: Deploy to production
+          deployment: Production
+          # Set trigger to manual for additional checkpoint
+          trigger: manual
+          clone:
+            enabled: false
+          script:
+            - pipe: atlassian/aws-s3-deploy:1.1.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                S3_BUCKET: 'integ-platform-ui-prod'
+                LOCAL_PATH: 'dist'
+            # TODO: Set deployment variable and actual production distribution id
+            - pipe: atlassian/aws-cloudfront-invalidate:0.6.0
+              variables:
+                AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+                AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+                AWS_DEFAULT_REGION: $AWS_DEFAULT_REGION
+                DISTRIBUTION_ID: 'PRODUCTION_DISTRIBUTION_ID'
+definitions:
+  caches:
+    npm: /root/.npm
+    cypress: /root/.cache/Cypress

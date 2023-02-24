@@ -1,11 +1,11 @@
 type RoutesType = (
     | {
-          path: any;
+          path: string;
           view: string;
           authRequired?: undefined;
       }
     | {
-          path: any;
+          path: string;
           view: string;
           authRequired: boolean;
       }

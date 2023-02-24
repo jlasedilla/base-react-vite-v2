@@ -1,4 +1,4 @@
-import { Route, RouteProps, Routes } from 'react-router-dom';
+import { createBrowserRouter, Route, RouteProps, RouterProvider, Routes } from 'react-router-dom';
 
 import routes from './routes';
 import Private from './private';
@@ -9,7 +9,8 @@ export type RouteType = RouteProps & {
     authRequired?: boolean;
 };
 
-const Router = (): JSX.Element => {
+// NOTE: Choose between AppRouterProvider or Router to do the routing
+export const Router = (): JSX.Element => {
     return (
         <Routes>
             {routes.map((route: RouteType) => {
@@ -23,4 +24,11 @@ const Router = (): JSX.Element => {
     );
 };
 
-export default Router;
+const router = createBrowserRouter(
+    routes.map((route: RouteType) => ({
+        path: route.path,
+        element: route.authRequired ? <Private {...route} /> : <Public {...route} />,
+    }))
+);
+
+export const AppRouterProvider = () => <RouterProvider router={router} />;

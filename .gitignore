@@ -26,3 +26,9 @@ cypress/videos
 *.njsproj
 *.sln
 *.sw?
+
+# E2E test result files
+cypress/results
+mochawesome-report
+mochawesome.json
+storybook-static

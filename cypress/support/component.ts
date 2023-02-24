@@ -19,7 +19,7 @@ import './commands';
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
 
-import { mount } from 'cypress/react18';
+// import { mount } from 'cypress/react18';
 
 // Styles
 import 'tailwindcss/tailwind.css';
@@ -28,15 +28,15 @@ import 'tailwindcss/tailwind.css';
 // your custom command.
 // Alternatively, can be defined in cypress/support/component.d.ts
 // with a <reference path="./component" /> at the top of your spec.
-declare global {
-    namespace Cypress {
-        interface Chainable {
-            mount: typeof mount;
-        }
-    }
-}
+// declare global {
+//     namespace Cypress {
+//         interface Chainable {
+//             mount: typeof mount;
+//         }
+//     }
+// }
 
-Cypress.Commands.add('mount', mount);
+// Cypress.Commands.add('mount', mount);
 
 // Example use:
 // cy.mount(<MyComponent />)

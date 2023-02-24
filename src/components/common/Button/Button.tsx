@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import './Button.css';
 
-interface ButtonProps {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     /**
      * Icon in a form of component
      */
@@ -15,10 +15,6 @@ interface ButtonProps {
      */
     edge?: 'rounded' | 'pill' | 'default';
     /**
-     * onClick callback function
-     */
-    onClick?: () => void;
-    /**
      * Other children node
      */
     children?: ReactNode;
@@ -28,11 +24,11 @@ export const Button = ({
     icon,
     label = 'Button',
     edge = 'rounded',
-    onClick,
     children,
+    ...props
 }: ButtonProps) => {
     return (
-        <button className={`button ${edge}`} onClick={onClick}>
+        <button className={`button ${edge}`} {...props}>
             {icon}
             {label}
             {children}
